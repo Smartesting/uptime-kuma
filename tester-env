@@ -2,17 +2,26 @@
 set -euo pipefail
 
 # Uptime Kuma - Tester Environment CLI
-# Usage: ./tester-env <command>
+# Usage: ./tester-env <command> [--ref <git-ref>]
 # Commands: deploy, seed, verify, reset, stop, logs, status
 
 CONTAINER_NAME="tester-env-uptime-kuma"
 IMAGE_NAME="tester-env-uptime-kuma"
 PORT="3001"
 DATA_VOLUME="uptime-kuma-data"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cmd_deploy() {
+    local ref="${1:-}"
+
+    if [[ -n "${ref}" ]]; then
+        echo "==> Checking out ref: ${ref}"
+        git -C "${SCRIPT_DIR}" checkout "${ref}"
+        echo "==> Submodule now at: $(git -C "${SCRIPT_DIR}" rev-parse --short HEAD)"
+    fi
+
     echo "==> Building Docker image..."
-    docker build -f Dockerfile.tester-env -t "${IMAGE_NAME}" .
+    docker build -f "${SCRIPT_DIR}/Dockerfile.tester-env" -t "${IMAGE_NAME}" "${SCRIPT_DIR}"
 
     echo "==> Starting container on port ${PORT}..."
     docker run -d --name "${CONTAINER_NAME}" \
@@ -25,7 +34,7 @@ cmd_deploy() {
     sleep 5
 
     echo "==> Creating admin user..."
-    docker cp scripts/setup-user.js "${CONTAINER_NAME}:/app/setup-user.js"
+    docker cp "${SCRIPT_DIR}/scripts/setup-user.js" "${CONTAINER_NAME}:/app/setup-user.js"
     docker exec "${CONTAINER_NAME}" node /app/setup-user.js
 
     echo "==> Deployment complete. App running at http://localhost:${PORT}"
@@ -33,14 +42,14 @@ cmd_deploy() {
 
 cmd_seed() {
     echo "==> Seeding data..."
-    docker cp scripts/seed.js "${CONTAINER_NAME}:/app/seed.js"
+    docker cp "${SCRIPT_DIR}/scripts/seed.js" "${CONTAINER_NAME}:/app/seed.js"
     docker exec "${CONTAINER_NAME}" node /app/seed.js
     echo "==> Seeding complete."
 }
 
 cmd_verify() {
     echo "==> Verifying seeded state..."
-    docker cp scripts/browser-verify.js "${CONTAINER_NAME}:/app/browser-verify.js"
+    docker cp "${SCRIPT_DIR}/scripts/browser-verify.js" "${CONTAINER_NAME}:/app/browser-verify.js"
     docker exec "${CONTAINER_NAME}" node /app/browser-verify.js
     echo "==> Verification complete."
 }
@@ -77,7 +86,7 @@ cmd_help() {
     cat <<EOF
 Uptime Kuma - Tester Environment CLI
 
-Usage: ./tester-env <command>
+Usage: ./tester-env <command> [--ref <git-ref>]
 
 Commands:
   deploy    Build image, start container, create admin user
@@ -89,21 +98,61 @@ Commands:
   status    Show container status
   help      Show this help message
 
+Options:
+  --ref <git-ref>   Git ref (branch, tag, or commit) to checkout before deploy.
+                    Useful for deploying specific scenario baselines or mutants.
+
 Typical workflow:
-  ./tester-env deploy    # First time or after reset
-  ./tester-env seed      # Populate with data
-  ./tester-env verify    # Check seeded state
-  ./tester-env reset     # Clean slate
+  ./tester-env deploy              # Deploy baseline (current submodule ref)
+  ./tester-env seed                # Populate with data
+  ./tester-env verify              # Check seeded state
+  ./tester-env reset               # Clean slate
+
+Scenario workflow:
+  ./tester-env deploy --ref scenario/monitor-count/pass   # Deploy passing variant
+  ./tester-env deploy --ref scenario/monitor-count/fail   # Deploy failing variant
 
 Credentials: admin / admin12345
+
+Branches:
+  tester-env-baseline   Contains CLI, Dockerfile, seed scripts, and DEPLOY-SMA.md
+  scenario/<id>/pass    Expected-to-pass scenario baseline
+  scenario/<id>/fail    Expected-to-fail scenario mutant
 EOF
 }
 
 main() {
     local cmd="${1:-help}"
+    local ref=""
+
+    # Parse optional --ref argument
+    for ((i=2; i<=$#; i++)); do
+        local arg="${!i}"
+        case "${arg}" in
+            --ref)
+                local next=$((i+1))
+                if [[ ${next} -le $# ]]; then
+                    ref="${!next}"
+                    ((i++))
+                else
+                    echo "Error: --ref requires a value"
+                    exit 1
+                fi
+                ;;
+            --help|-h)
+                cmd_help
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: ${arg}"
+                cmd_help
+                exit 1
+                ;;
+        esac
+    done
 
     case "${cmd}" in
-        deploy) cmd_deploy ;;
+        deploy) cmd_deploy "${ref}" ;;
         seed) cmd_seed ;;
         verify) cmd_verify ;;
         reset) cmd_reset ;;
