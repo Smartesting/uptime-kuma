@@ -21,10 +21,23 @@
 | `logs` | Tail container logs |
 | `status` | Show container status |
 
+Options:
+- `--run-id <id>` isolates container, image, and volume names for parallel scenario runs.
+- `--port <port>` binds the app to a specific host port.
+- `--ref <git-ref>` checks out a ref before deployment for manual runs.
+
 ## Build
 
 ```bash
 ./tester-env deploy
+```
+
+Parallel scenario example:
+
+```bash
+./tester-env deploy --run-id run-001 --port 3101
+./tester-env seed --run-id run-001
+./tester-env reset --run-id run-001
 ```
 
 Custom `Dockerfile.tester-env` uses `node:22-bookworm-slim` and builds from source with:

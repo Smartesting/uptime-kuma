@@ -2,14 +2,23 @@
 set -euo pipefail
 
 # Uptime Kuma - Tester Environment CLI
-# Usage: ./tester-env <command> [--ref <git-ref>]
+# Usage: ./tester-env <command> [--ref <git-ref>] [--run-id <id>] [--port <port>]
 # Commands: deploy, seed, verify, reset, stop, logs, status
 
-CONTAINER_NAME="tester-env-uptime-kuma"
-IMAGE_NAME="tester-env-uptime-kuma"
+RUN_ID="default"
 PORT="3001"
-DATA_VOLUME="uptime-kuma-data"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+refresh_names() {
+    local suffix=""
+    if [[ "${RUN_ID}" != "default" ]]; then
+        suffix="-${RUN_ID}"
+    fi
+
+    CONTAINER_NAME="tester-env-uptime-kuma${suffix}"
+    IMAGE_NAME="tester-env-uptime-kuma${suffix}"
+    DATA_VOLUME="uptime-kuma-data${suffix}"
+}
 
 cmd_deploy() {
     local ref="${1:-}"
@@ -86,7 +95,7 @@ cmd_help() {
     cat <<EOF
 Uptime Kuma - Tester Environment CLI
 
-Usage: ./tester-env <command> [--ref <git-ref>]
+Usage: ./tester-env <command> [--ref <git-ref>] [--run-id <id>] [--port <port>]
 
 Commands:
   deploy    Build image, start container, create admin user
@@ -101,6 +110,10 @@ Commands:
 Options:
   --ref <git-ref>   Git ref (branch, tag, or commit) to checkout before deploy.
                     Useful for deploying specific scenario baselines or mutants.
+  --run-id <id>     Isolate container, image, and volume names for parallel runs.
+                    Default: default
+  --port <port>     Host port to bind to container port 3001.
+                    Default: 3001
 
 Typical workflow:
   ./tester-env deploy              # Deploy baseline (current submodule ref)
@@ -109,8 +122,9 @@ Typical workflow:
   ./tester-env reset               # Clean slate
 
 Scenario workflow:
-  ./tester-env deploy --ref scenario/monitor-count/pass   # Deploy passing variant
-  ./tester-env deploy --ref scenario/monitor-count/fail   # Deploy failing variant
+  ./tester-env deploy --ref <sha> --run-id run-001 --port 3101
+  ./tester-env seed --run-id run-001
+  ./tester-env reset --run-id run-001
 
 Credentials: admin / admin12345
 
@@ -139,6 +153,26 @@ main() {
                     exit 1
                 fi
                 ;;
+            --run-id)
+                local next=$((i+1))
+                if [[ ${next} -le $# ]]; then
+                    RUN_ID="${!next}"
+                    ((i++))
+                else
+                    echo "Error: --run-id requires a value"
+                    exit 1
+                fi
+                ;;
+            --port)
+                local next=$((i+1))
+                if [[ ${next} -le $# ]]; then
+                    PORT="${!next}"
+                    ((i++))
+                else
+                    echo "Error: --port requires a value"
+                    exit 1
+                fi
+                ;;
             --help|-h)
                 cmd_help
                 exit 0
@@ -150,6 +184,8 @@ main() {
                 ;;
         esac
     done
+
+    refresh_names
 
     case "${cmd}" in
         deploy) cmd_deploy "${ref}" ;;
