@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Uptime Kuma - Tester Environment CLI
+# Usage: ./tester-env <command>
+# Commands: deploy, seed, verify, reset, stop, logs, status
+
+CONTAINER_NAME="tester-env-uptime-kuma"
+IMAGE_NAME="tester-env-uptime-kuma"
+PORT="3001"
+DATA_VOLUME="uptime-kuma-data"
+
+cmd_deploy() {
+    echo "==> Building Docker image..."
+    docker build -f Dockerfile.tester-env -t "${IMAGE_NAME}" .
+
+    echo "==> Starting container on port ${PORT}..."
+    docker run -d --name "${CONTAINER_NAME}" \
+        -p "${PORT}:3001" \
+        -v "${DATA_VOLUME}:/app/data" \
+        -e UPTIME_KUMA_DB_TYPE=sqlite \
+        "${IMAGE_NAME}"
+
+    echo "==> Waiting for app to start..."
+    sleep 5
+
+    echo "==> Creating admin user..."
+    docker cp scripts/setup-user.js "${CONTAINER_NAME}:/app/setup-user.js"
+    docker exec "${CONTAINER_NAME}" node /app/setup-user.js
+
+    echo "==> Deployment complete. App running at http://localhost:${PORT}"
+}
+
+cmd_seed() {
+    echo "==> Seeding data..."
+    docker cp scripts/seed.js "${CONTAINER_NAME}:/app/seed.js"
+    docker exec "${CONTAINER_NAME}" node /app/seed.js
+    echo "==> Seeding complete."
+}
+
+cmd_verify() {
+    echo "==> Verifying seeded state..."
+    docker cp scripts/browser-verify.js "${CONTAINER_NAME}:/app/browser-verify.js"
+    docker exec "${CONTAINER_NAME}" node /app/browser-verify.js
+    echo "==> Verification complete."
+}
+
+cmd_reset() {
+    echo "==> Resetting environment..."
+    docker stop "${CONTAINER_NAME}" 2>/dev/null || true
+    docker rm "${CONTAINER_NAME}" 2>/dev/null || true
+    docker volume rm "${DATA_VOLUME}" 2>/dev/null || true
+    echo "==> Reset complete. Run 'deploy' to start fresh."
+}
+
+cmd_stop() {
+    echo "==> Stopping container..."
+    docker stop "${CONTAINER_NAME}" 2>/dev/null || true
+    echo "==> Stopped."
+}
+
+cmd_logs() {
+    docker logs -f "${CONTAINER_NAME}" 2>/dev/null || echo "Container not running."
+}
+
+cmd_status() {
+    if docker ps --filter "name=${CONTAINER_NAME}" --format "{{.Names}}" | grep -q "${CONTAINER_NAME}"; then
+        echo "Status: RUNNING"
+        echo "URL: http://localhost:${PORT}"
+        echo "Container: ${CONTAINER_NAME}"
+    else
+        echo "Status: NOT RUNNING"
+    fi
+}
+
+cmd_help() {
+    cat <<EOF
+Uptime Kuma - Tester Environment CLI
+
+Usage: ./tester-env <command>
+
+Commands:
+  deploy    Build image, start container, create admin user
+  seed      Populate app with deterministic seed data
+  verify    Run browser verification against seeded state
+  reset     Stop container, remove container and data volume
+  stop      Stop container (preserves data)
+  logs      Tail container logs
+  status    Show container status
+  help      Show this help message
+
+Typical workflow:
+  ./tester-env deploy    # First time or after reset
+  ./tester-env seed      # Populate with data
+  ./tester-env verify    # Check seeded state
+  ./tester-env reset     # Clean slate
+
+Credentials: admin / admin12345
+EOF
+}
+
+main() {
+    local cmd="${1:-help}"
+
+    case "${cmd}" in
+        deploy) cmd_deploy ;;
+        seed) cmd_seed ;;
+        verify) cmd_verify ;;
+        reset) cmd_reset ;;
+        stop) cmd_stop ;;
+        logs) cmd_logs ;;
+        status) cmd_status ;;
+        help|--help|-h) cmd_help ;;
+        *)
+            echo "Unknown command: ${cmd}"
+            cmd_help
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

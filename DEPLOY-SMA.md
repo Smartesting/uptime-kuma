@@ -1,47 +1,49 @@
 # Uptime Kuma - Deployment, Smoke, and Mutation Notes
 
+## Quick Start
+
+```bash
+./tester-env deploy    # Build image, start container, create admin user
+./tester-env seed      # Populate with deterministic seed data
+./tester-env verify    # Check seeded state
+./tester-env reset     # Clean slate (stop + remove container + volume)
+```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `deploy` | Build image, start container, create admin user |
+| `seed` | Populate app with deterministic seed data |
+| `verify` | Run browser verification against seeded state |
+| `reset` | Stop container, remove container and data volume |
+| `stop` | Stop container (preserves data) |
+| `logs` | Tail container logs |
+| `status` | Show container status |
+
 ## Build
 
 ```bash
-docker build -f Dockerfile.tester-env -t tester-env-uptime-kuma .
+./tester-env deploy
 ```
 
 Custom `Dockerfile.tester-env` uses `node:22-bookworm-slim` and builds from source with:
 - `npm ci --legacy-peer-deps` (peer dependency conflicts require this flag)
 - `npm run build` (vite production build)
 
-## Run
-
-```bash
-docker run -d --name tester-env-uptime-kuma \
-  -p 3001:3001 \
-  -v uptime-kuma-data:/app/data \
-  -e UPTIME_KUMA_DB_TYPE=sqlite \
-  tester-env-uptime-kuma
-```
-
 - Port: `3001`
 - URL: `http://localhost:3001`
 - Requires `UPTIME_KUMA_DB_TYPE=sqlite` to skip the database setup wizard
 
-## First-Run Setup
+## Credentials
 
-Create the initial admin user via Socket.IO:
-
-```bash
-docker cp scripts/setup-user.js tester-env-uptime-kuma:/app/setup-user.js
-docker exec tester-env-uptime-kuma node /app/setup-user.js
-```
-
-Credentials: `admin` / `admin12345`
+- Username: `admin`
+- Password: `admin12345`
 
 ## Seed Data
 
-Populate realistic monitoring data:
-
 ```bash
-docker cp scripts/seed.js tester-env-uptime-kuma:/app/seed.js
-docker exec tester-env-uptime-kuma node /app/seed.js
+./tester-env seed
 ```
 
 Seeded entities:
@@ -56,18 +58,15 @@ Monitor names: Production API, Checkout Service, Auth Service, Database Primary,
 ## Reset
 
 ```bash
-docker stop tester-env-uptime-kuma
-docker rm tester-env-uptime-kuma
-docker volume rm uptime-kuma-data
+./tester-env reset
 ```
 
-Then re-run the container, setup-user, and seed steps.
+Then run `deploy` and `seed` to start fresh.
 
 ## Browser Verification
 
 ```bash
-docker cp scripts/browser-verify.js tester-env-uptime-kuma:/app/browser-verify.js
-docker exec tester-env-uptime-kuma node /app/browser-verify.js
+./tester-env verify
 ```
 
 Checks:
