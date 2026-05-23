@@ -105,7 +105,7 @@
             </li>
         </template>
     </MonitorListFilterDropdown>
-    <MonitorListFilterDropdown :filterActive="filterState.tags?.length > 0" @open-menu="getExistingTags">
+    <MonitorListFilterDropdown :filterActive="filterState.tags?.length > 0">
         <template #status>
             <Tag
                 v-if="filterState.tags?.length === 1"
