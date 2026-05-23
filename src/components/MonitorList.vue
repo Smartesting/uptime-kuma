@@ -241,12 +241,14 @@ export default {
         },
 
         /**
-         * Gets all group monitors that have children at any nesting level
+         * Gets all root group monitors that have children
          * @returns {Array} Array of group monitors with children
          */
         groupMonitors() {
             const monitors = Object.values(this.$root.monitorList);
-            return monitors.filter((m) => m.type === "group" && monitors.some((child) => child.parent === m.id));
+            return monitors.filter(
+                (m) => m.type === "group" && m.parent === null && monitors.some((child) => child.parent === m.id)
+            );
         },
 
         /**
@@ -365,29 +367,6 @@ export default {
             });
 
             window.localStorage.setItem("monitorCollapsed", JSON.stringify(storageObject));
-
-            // If collapsing all and currently viewing a nested group, navigate to root parent
-            if (shouldCollapse) {
-                const currentMonitorId = parseInt(this.$route.params.id);
-                const currentMonitor = this.$root.monitorList[currentMonitorId];
-
-                if (currentMonitor && currentMonitor.parent !== null) {
-                    // Find the root parent by traversing up the hierarchy
-                    let rootParentId = currentMonitor.parent;
-                    let rootParent = this.$root.monitorList[rootParentId];
-
-                    while (rootParent && rootParent.parent !== null) {
-                        rootParentId = rootParent.parent;
-                        rootParent = this.$root.monitorList[rootParentId];
-                    }
-
-                    // Navigate to the root parent, then increment collapseKey to force re-render
-                    this.$router.push(getMonitorRelativeURL(rootParentId)).finally(() => {
-                        this.collapseKey++;
-                    });
-                    return;
-                }
-            }
 
             this.collapseKey++;
         },
