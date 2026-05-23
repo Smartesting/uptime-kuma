@@ -290,9 +290,6 @@ export default {
                     this.sortedMonitorList.forEach((item) => {
                         this.selectedMonitors[item.id] = true;
                     });
-                } else {
-                    // Exit select mode when unchecking "select all"
-                    this.selectMode = false;
                 }
             } else {
                 this.disableSelectAllWatcher = false;
