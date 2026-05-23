@@ -163,13 +163,10 @@ export default {
             };
         },
         monitorStyle() {
-            const isFullWidth = this.$root.userHeartbeatBar === "bottom" || this.$root.userHeartbeatBar === "none";
-            const c = {};
-            if (!isFullWidth) {
-                c["col-9"] = true;
-                c["col-xl-6"] = true;
-            }
-            return c;
+            return {
+                "col-9": true,
+                "col-xl-6": true,
+            };
         },
     },
     watch: {
