@@ -62,14 +62,6 @@
                                                     @click="removeMonitor(group.index, monitor.index)"
                                                 />
 
-                                                <font-awesome-icon
-                                                    v-if="editMode"
-                                                    icon="cog"
-                                                    class="action me-3 ms-0"
-                                                    :class="{ 'link-active': true, 'btn-link': true }"
-                                                    data-testid="monitor-settings"
-                                                    @click="$refs.monitorSettingDialog.show(group, monitor)"
-                                                />
                                                 <Status
                                                     v-if="showOnlyLastHeartbeat"
                                                     :status="statusOfLastHeartbeat(monitor.element.id)"
@@ -88,6 +80,16 @@
                                                 <p v-else class="item-name" data-testid="monitor-name">
                                                     {{ monitor.element.name }}
                                                 </p>
+                                                <span title="Setting">
+                                                    <font-awesome-icon
+                                                        v-if="editMode"
+                                                        icon="cog"
+                                                        class="action me-3"
+                                                        :class="{ 'link-active': true, 'btn-link': true }"
+                                                        data-testid="monitor-settings"
+                                                        @click="$refs.monitorSettingDialog.show(group, monitor)"
+                                                    />
+                                                </span>
                                             </div>
                                             <div class="extra-info">
                                                 <div
