@@ -27,7 +27,7 @@
                         <div class="me-1">
                             <Uptime :monitor="monitor" type="24" :pill="true" />
                         </div>
-                        <div class="d-flex align-items-center gap-2 flex-fill" style="min-width: 0">
+                        <div class="d-flex align-items-center gap-2">
                             <span v-if="hasChildren" class="collapse-padding" @click.prevent="changeCollapsed">
                                 <font-awesome-icon
                                     icon="chevron-down"
@@ -35,12 +35,10 @@
                                     :class="{ collapsed: isCollapsed }"
                                 />
                             </span>
-                            <div class="flex-fill text-truncate" style="min-width: 0">
-                                <div class="text-truncate">{{ monitor.name }}</div>
-                                <div v-if="monitor.tags.length > 0" class="tags gap-1">
-                                    <Tag v-for="tag in monitor.tags" :key="tag" :item="tag" :size="'sm'" />
-                                </div>
-                            </div>
+                            {{ monitor.name }}
+                        </div>
+                        <div v-if="monitor.tags.length > 0" class="tags gap-1">
+                            <Tag v-for="tag in monitor.tags" :key="tag" :item="tag" :size="'sm'" />
                         </div>
                     </div>
                     <div
@@ -335,7 +333,7 @@ export default {
 
 .tags {
     margin-top: 4px;
-    padding-left: 4px;
+    padding-left: 67px;
     display: flex;
     flex-wrap: wrap;
     gap: 0;
