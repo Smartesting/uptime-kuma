@@ -16,7 +16,9 @@ refresh_names() {
     fi
 
     CONTAINER_NAME="tester-env-uptime-kuma${suffix}"
-    IMAGE_NAME="tester-env-uptime-kuma${suffix}"
+    # IMAGE_TAG set by scripts/rl-env to a content-addressed tag so identical
+    # (baseline, patch-set) combos share an image. Manual invocations get :dev.
+    IMAGE_NAME="${IMAGE_TAG:-tester-env-uptime-kuma:dev}"
     DATA_VOLUME="uptime-kuma-data${suffix}"
 }
 
